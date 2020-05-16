@@ -87,31 +87,31 @@ final LibraryDefinition libraryDefinition =
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'$',
+                  name: r'_',
                   annotations: [r'''JsonKey(name: '_')'''],
                   isNonNull: false,
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'$a',
+                  name: r'_a',
                   annotations: [r'''JsonKey(name: '_a')'''],
                   isNonNull: false,
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'$a_a',
+                  name: r'_a_a',
                   annotations: [r'''JsonKey(name: '_a_a')'''],
                   isNonNull: false,
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'$a_a_',
+                  name: r'_a_a_',
                   annotations: [r'''JsonKey(name: '_a_a_')'''],
                   isNonNull: false,
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'$new',
+                  name: r'_new',
                   annotations: [r'''JsonKey(name: '_new')'''],
                   isNonNull: false,
                   isResolveType: false)
@@ -130,31 +130,31 @@ final LibraryDefinition libraryDefinition =
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'$',
+                  name: r'_',
                   annotations: [r'''JsonKey(name: '_')'''],
                   isNonNull: false,
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'$b',
+                  name: r'_b',
                   annotations: [r'''JsonKey(name: '_b')'''],
                   isNonNull: false,
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'$b_b',
+                  name: r'_b_b',
                   annotations: [r'''JsonKey(name: '_b_b')'''],
                   isNonNull: false,
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'$b_b_',
+                  name: r'_b_b_',
                   annotations: [r'''JsonKey(name: '_b_b_')'''],
                   isNonNull: false,
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'kw$new',
+                  name: r'new',
                   annotations: [r'''JsonKey(name: 'new')'''],
                   isNonNull: false,
                   isResolveType: false)
@@ -168,7 +168,7 @@ final LibraryDefinition libraryDefinition =
             properties: [
               ClassProperty(
                   type: r'String',
-                  name: r'$$typename',
+                  name: r'__typename',
                   annotations: [
                     r'override',
                     r'''JsonKey(name: '__typename')'''

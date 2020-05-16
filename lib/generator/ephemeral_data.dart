@@ -96,7 +96,7 @@ class Context {
   final bool log;
 
   /// A list of used enums (to filtered on generation).
-  final Set<String> usedEnums;
+  final Set<EnumName> usedEnums;
 
   /// A list of used input objects (to filtered on generation).
   final Set<String> usedInputObjects;

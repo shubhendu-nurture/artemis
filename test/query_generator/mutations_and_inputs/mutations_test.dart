@@ -117,7 +117,7 @@ final LibraryDefinition libraryDefinition =
             properties: [
               ClassProperty(
                   type: r'String',
-                  name: r'$s',
+                  name: r'_s',
                   annotations: [r'''JsonKey(name: '_s')'''],
                   isNonNull: false,
                   isResolveType: false)
@@ -130,7 +130,7 @@ final LibraryDefinition libraryDefinition =
             properties: [
               ClassProperty(
                   type: r'$custom$MutationRoot$$MutationResponse',
-                  name: r'$mut',
+                  name: r'_mut',
                   annotations: [r'''JsonKey(name: '_mut')'''],
                   isNonNull: false,
                   isResolveType: false)
@@ -139,11 +139,11 @@ final LibraryDefinition libraryDefinition =
             typeNameField: r'__typename',
             isInput: false),
         ClassDefinition(
-            name: r'$Input',
+            name: r'_Input',
             properties: [
               ClassProperty(
                   type: r'String',
-                  name: r'$s',
+                  name: r'_s',
                   annotations: [r'''JsonKey(name: '_s')'''],
                   isNonNull: true,
                   isResolveType: false)

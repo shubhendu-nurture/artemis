@@ -82,8 +82,8 @@ final LibraryDefinition libraryDefinition =
         EnumDefinition(
             name: r'InputEnum', values: [r'C', r'D', r'ARTEMIS_UNKNOWN']),
         EnumDefinition(
-            name: r'$InputInputEnum',
-            values: [r'$E', r'$F', r'$new', r'kw$new', r'ARTEMIS_UNKNOWN']),
+            name: r'_InputInputEnum',
+            values: [r'_E', r'_F', r'_new', r'new', r'ARTEMIS_UNKNOWN']),
         ClassDefinition(
             name: r'Custom$QueryRoot$QueryResponse',
             properties: [

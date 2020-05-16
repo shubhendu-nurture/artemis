@@ -108,7 +108,7 @@ final LibraryDefinition libraryDefinition =
                   isResolveType: false),
               ClassProperty(
                   type: r'String',
-                  name: r'$$typename',
+                  name: r'__typename',
                   annotations: [
                     r'override',
                     r'''JsonKey(name: '__typename')'''
