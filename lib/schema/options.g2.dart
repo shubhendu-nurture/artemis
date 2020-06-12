@@ -79,3 +79,13 @@ Map<String, dynamic> _$SchemaMapToJson(SchemaMap instance) => <String, dynamic>{
       'queries_glob': instance.queriesGlob,
       'type_name_field': instance.typeNameField,
     };
+
+DBInfo _$DBInfoFromJson(Map<String, dynamic> json) {
+  return DBInfo(
+    tableName: json['tableName'] as String,
+  );
+}
+
+Map<String, dynamic> _$DBInfoToJson(DBInfo instance) => <String, dynamic>{
+      'tableName': instance.tableName,
+    };

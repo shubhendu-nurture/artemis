@@ -334,6 +334,9 @@ class _GeneratorVisitor extends RecursiveVisitor {
     }
 
     _log('<- Generated class ${context.joinedName()}.', 0);
+    print(
+        'Current class name ${context.path} ${context.alias} ${context.currentType.name.value}');
+
     context.generatedClasses.add(ClassDefinition(
       name: context.joinedName(),
       properties: _classProperties,

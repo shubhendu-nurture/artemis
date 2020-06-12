@@ -128,3 +128,21 @@ class SchemaMap {
   /// Convert this schema mapping instance to JSON.
   Map<String, dynamic> toJson() => _$SchemaMapToJson(this);
 }
+
+/// Info for mapping a GraphQL queries to db objects
+@JsonSerializable(fieldRename: FieldRename.snake)
+class DBInfo {
+  /// The table name to store the current query data.
+  final String tableName;
+
+  /// Instantiates DBInfo.
+  DBInfo({
+    this.tableName,
+  });
+
+  /// Build a DBInfo from a JSON map.
+  factory DBInfo.fromJson(Map<String, dynamic> json) => _$DBInfoFromJson(json);
+
+  /// Convert this DBInfo instance to JSON.
+  Map<String, dynamic> toJson() => _$DBInfoToJson(this);
+}
