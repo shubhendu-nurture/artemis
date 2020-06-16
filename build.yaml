@@ -6,4 +6,4 @@ builders:
     auto_apply: dependents
     build_to: source
     applies_builders: ['json_serializable']
-    runs_before: ['json_serializable']
+    runs_before: ['json_serializable', 'floor_generator']
