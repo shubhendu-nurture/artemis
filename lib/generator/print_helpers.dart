@@ -11,6 +11,21 @@ Spec enumDefinitionToSpec(EnumDefinition definition) =>
   ${definition.values.removeDuplicatedBy((i) => i).map((v) => '@JsonValue("${v.name}")${v.namePrintable}, ').join()}
 }'''));
 
+/// Generate a [Spec] from single enum extension which will include two values.
+Spec enumDefinitionExtensionToSpec(EnumDefinition definition) {
+  final enumName = definition.name.namePrintable;
+  final buffer = StringBuffer()
+    ..writeln('extension ${enumName}Ext on ${enumName} {')
+    ..writeln('  String toValue() {')
+    ..writeln('    return _\$${enumName}EnumMap[this];')
+    ..writeln('  }\n')
+    ..writeln('  ${enumName} fromValue(String name) {')
+    ..writeln('    return ${enumName}.artemisUnknown;')
+    ..writeln('  }')
+    ..writeln('}');
+  return CodeExpression(Code(buffer.toString()));
+}
+
 String _fromJsonBody(ClassDefinition definition) {
   final buffer = StringBuffer();
   buffer.writeln(
@@ -108,17 +123,127 @@ Spec classDefinitionToSpec(
       .expand((i) => i)
       .followedBy(definition.properties.map((p) => p.name.namePrintable));
 
+  var classExtension = definition.extension != null
+      ? refer(definition.extension.namePrintable)
+      : null;
+
+  final _responseTypes = [
+    'FetchBookingById\$QueryType\$GetBookingsByID\$Bookings',
+    'FetchBookings\$QueryType\$GetBookingsByActor\$Bookings',
+    'CreateBooking\$MutationType\$CreateBooking\$Bookings',
+    'RescheduleBooking\$MutationType\$UpdateService\$Bookings',
+    'CancelBooking\$MutationType\$UpdateBooking\$Bookings',
+  ];
+  final List<Method> customOverrides = [];
+  if (_responseTypes.contains(definition.name.namePrintable)) {
+    classExtension = refer('QueryResponse');
+
+    customOverrides.add(Method((m) => m
+      ..type = MethodType.getter
+      ..returns = refer('Map<String, dynamic>')
+      ..name = 'bookingDetail'
+      ..lambda = true
+      ..body = Code('''{\'actorCounterId\': actorCounterId,
+    \'farmId\': farmId,
+    \'farmCropId\': farmCropId,
+    \'services\': services?.map((e) => e?.toJson())?.toList()}''')));
+
+    customOverrides.add(Method((m) => m
+      ..type = MethodType.getter
+      ..returns = refer('Map<String, dynamic>')
+      ..annotations.add(CodeExpression(Code('override')))
+      ..name = 'columnValues'
+      ..lambda = true
+      ..body = Code('''{\'booking_id\': bookingId,
+        'booking_type':
+            _\$FarmNurtureCoreContractsCommonBookingTypeEnumMap[bookingType],
+        'booking_source':
+            _\$FarmNurtureCoreContractsCommonBookingSourceEnumMap[bookingSource],
+        'booking_status':
+            _\$FarmNurtureCoreContractsCommonBookingStatusEnumMap[bookingStatus],
+        'actor_id': actorId,
+        'actor_type':
+            _\$FarmNurtureCoreContractsCommonActorTypeEnumMap[actorType],
+        'booking_detail': jsonEncode(bookingDetail)}''')));
+
+    customOverrides.add(Method((m) => m
+      ..type = MethodType.getter
+      ..returns = refer('int')
+      ..annotations.add(CodeExpression(Code('override')))
+      ..name = 'fetchedTimestamp'
+      ..lambda = true
+      ..body = Code('0')));
+
+    customOverrides.add(Method((m) => m
+      ..type = MethodType.getter
+      ..returns = refer('String')
+      ..annotations.add(CodeExpression(Code('override')))
+      ..name = 'tableName'
+      ..lambda = true
+      ..body = Code('\'booking\'')));
+
+    customOverrides.add(Method((m) => m
+      ..type = MethodType.getter
+      ..returns = refer('String')
+      ..annotations.add(CodeExpression(Code('override')))
+      ..name = 'primaryKeyFieldName'
+      ..lambda = true
+      ..body = Code('\'booking_id\'')));
+  }
+
+  final _queryTypes = [
+    'FetchBookingById\$QueryType',
+    'FetchBookings\$QueryType',
+    'CreateBooking\$MutationType',
+    'RescheduleBooking\$MutationType',
+    'CancelBooking\$MutationType',
+  ];
+  if (_queryTypes.contains(definition.name.namePrintable)) {
+    classExtension = refer('QueryListResponse');
+
+    customOverrides.add(Method((m) => m
+      ..type = MethodType.getter
+      ..returns = refer('List<int>')
+      ..annotations.add(CodeExpression(Code('override')))
+      ..name = 'deleteIds'
+      ..lambda = true
+      ..body = Code('[]')));
+
+    customOverrides.add(Method((m) => m
+      ..type = MethodType.getter
+      ..returns = refer('String')
+      ..annotations.add(CodeExpression(Code('override')))
+      ..name = 'primaryKeyFieldName'
+      ..lambda = true
+      ..body = Code('\'booking_id\'')));
+
+    customOverrides.add(Method((m) => m
+      ..type = MethodType.getter
+      ..returns = refer('List<QueryResponse>')
+      ..annotations.add(CodeExpression(Code('override')))
+      ..name = 'rows'
+      ..lambda = true
+      ..body =
+          Code('${definition.properties.first.name.namePrintable}.bookings')));
+
+    customOverrides.add(Method((m) => m
+      ..type = MethodType.getter
+      ..returns = refer('String')
+      ..annotations.add(CodeExpression(Code('override')))
+      ..name = 'tableName'
+      ..lambda = true
+      ..body = Code('\'booking\'')));
+  }
+
   return Class(
     (b) => b
-      ..annotations
-          .add(CodeExpression(Code('JsonSerializable(explicitToJson: true)')))
+      ..annotations.add(CodeExpression(
+          Code('JsonSerializable(explicitToJson: true, includeIfNull: false)')))
       ..name = definition.name.namePrintable
       ..mixins.add(refer('EquatableMixin'))
       ..mixins.addAll(definition.mixins.map((i) => refer(i.namePrintable)))
       ..methods.add(_propsMethod('[${props.join(',')}]'))
-      ..extend = definition.extension != null
-          ? refer(definition.extension.namePrintable)
-          : null
+      ..extend = classExtension
       ..implements.addAll(definition.implementations.map((i) => refer(i)))
       ..constructors.add(Constructor((b) {
         if (definition.isInput) {
@@ -144,6 +269,7 @@ Spec classDefinitionToSpec(
       }))
       ..constructors.add(fromJson)
       ..methods.add(toJson)
+      ..methods.addAll(customOverrides)
       ..fields.addAll(definition.properties.map((p) {
         final field = Field(
           (f) => f
@@ -172,12 +298,59 @@ Spec fragmentClassDefinitionToSpec(FragmentClassDefinition definition) {
 }'''));
 }
 
+/// Generates a [Spec] of a detail model class.
+Spec generateModelDetailClassSpec() {
+  final List<Field> detailFieldDefinitions = [];
+  detailFieldDefinitions.add(Field((f) => f
+    ..type = refer('int')
+    ..name = 'actorCounterId'));
+  detailFieldDefinitions.add(Field((f) => f
+    ..type = refer('int')
+    ..name = 'farmId'));
+  detailFieldDefinitions.add(Field((f) => f
+    ..type = refer('int')
+    ..name = 'farmCropId'));
+  detailFieldDefinitions.add(Field((f) => f
+    ..type = refer(
+        'List<FetchBookings\$QueryType\$GetBookingsByActor\$Bookings\$Services>')
+    ..name = 'services'));
+  return Class(
+    (b) => b
+      ..annotations.add(CodeExpression(
+          Code('JsonSerializable(explicitToJson: true, includeIfNull: false)')))
+      ..name = 'BookingDetail'
+      ..constructors.add(Constructor(
+        (b) => b,
+      ))
+      ..constructors.add(Constructor(
+        (b) => b
+          ..factory = true
+          ..name = 'fromJson'
+          ..lambda = true
+          ..requiredParameters.add(Parameter(
+            (p) => p
+              ..type = refer('Map<String, dynamic>')
+              ..name = 'json',
+          ))
+          ..body = Code('_\$BookingDetailFromJson(json)'),
+      ))
+      ..methods.add(Method(
+        (m) => m
+          ..name = 'toJson'
+          ..lambda = true
+          ..returns = refer('Map<String, dynamic>')
+          ..body = Code('_\$BookingDetailToJson(this)'),
+      ))
+      ..fields.addAll(detailFieldDefinitions),
+  );
+}
+
 /// Generates a [Spec] of a mutation argument class.
 Spec generateArgumentClassSpec(QueryDefinition definition) {
   return Class(
     (b) => b
-      ..annotations
-          .add(CodeExpression(Code('JsonSerializable(explicitToJson: true)')))
+      ..annotations.add(CodeExpression(
+          Code('JsonSerializable(explicitToJson: true, includeIfNull: false)')))
       ..name = '${definition.className}Arguments'
       ..extend = refer('JsonSerializable')
       ..mixins.add(refer('EquatableMixin'))
@@ -308,6 +481,8 @@ Spec generateLibrarySpec(LibraryDefinition definition) {
     Directive.import('package:json_annotation/json_annotation.dart'),
     Directive.import('package:equatable/equatable.dart'),
     Directive.import('package:gql/ast.dart'),
+    Directive.import('dart:convert'),
+    Directive.import('package:nf_gql_client/nf_gql_client_lib.dart'),
   ];
 
   if (definition.queries.any((q) => q.generateHelpers)) {
@@ -354,6 +529,7 @@ Spec generateLibrarySpec(LibraryDefinition definition) {
   bodyDirectives
       .addAll(classes.map((cDef) => classDefinitionToSpec(cDef, fragments)));
   bodyDirectives.addAll(enums.map(enumDefinitionToSpec));
+  bodyDirectives.addAll(enums.map(enumDefinitionExtensionToSpec));
 
   for (final queryDef in definition.queries) {
     if (queryDef.inputs.isNotEmpty && queryDef.generateHelpers) {
@@ -363,6 +539,8 @@ Spec generateLibrarySpec(LibraryDefinition definition) {
       bodyDirectives.add(generateQueryClassSpec(queryDef));
     }
   }
+
+  bodyDirectives.add(generateModelDetailClassSpec());
 
   return Library(
     (b) => b..directives.addAll(importDirectives)..body.addAll(bodyDirectives),

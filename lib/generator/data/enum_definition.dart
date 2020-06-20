@@ -51,4 +51,9 @@ class EnumName extends Name with DataPrinter {
   Map<String, Object> get namedProps => {
         'name': name,
       };
+
+  @override
+  String normalize(String name) {
+    return ReCase(name).pascalCase;
+  }
 }

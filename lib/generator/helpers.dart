@@ -68,6 +68,8 @@ List<String> dartKeywords = const [
   'static',
 ];
 
+final String listPrefix = 'List<';
+
 Iterable<T> _removeDuplicatedBy<T, U>(
     Iterable<T> list, _IterableFunction<T, U> fn) {
   final values = <U, bool>{};
@@ -92,12 +94,19 @@ String normalizeName(String name) {
   if (matches.isNotEmpty) {
     var match = matches.elementAt(0);
     var fieldName = match.group(2);
-
     return fieldName.padLeft(name.length, r'$');
   }
 
   if (dartKeywords.contains(name)) {
     return 'kw\$$name';
+  }
+
+  if (name.startsWith(listPrefix)) {
+    var prefixIndex = name.indexOf(listPrefix) + listPrefix.length;
+    var prefix = name.substring(0, listPrefix.length);
+    var infix = name.substring(prefixIndex, prefixIndex + 1);
+    var suffix = name.substring(prefixIndex + 1);
+    return '$prefix${infix.toUpperCase()}$suffix';
   }
 
   return name;
