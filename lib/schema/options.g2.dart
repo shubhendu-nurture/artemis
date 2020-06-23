@@ -69,6 +69,8 @@ SchemaMap _$SchemaMapFromJson(Map<String, dynamic> json) {
     output: json['output'] as String,
     schema: json['schema'] as String,
     queriesGlob: json['queries_glob'] as String,
+    metadataFile: json['metadata_file'] as String,
+    entityOutput: json['entity_output'] as String,
     typeNameField: json['type_name_field'] as String ?? '__typename',
     namingScheme: _$enumDecodeNullable(
         _$NamingSchemeEnumMap, json['naming_scheme'],
@@ -80,6 +82,8 @@ Map<String, dynamic> _$SchemaMapToJson(SchemaMap instance) => <String, dynamic>{
       'output': instance.output,
       'schema': instance.schema,
       'queries_glob': instance.queriesGlob,
+      'metadata_file': instance.metadataFile,
+      'entity_output': instance.entityOutput,
       'type_name_field': instance.typeNameField,
       'naming_scheme': _$NamingSchemeEnumMap[instance.namingScheme],
     };
@@ -121,3 +125,43 @@ const _$NamingSchemeEnumMap = {
   NamingScheme.pathedWithFields: 'pathedWithFields',
   NamingScheme.simple: 'simple',
 };
+
+DbMetadataInfo _$DbMetadataInfoFromJson(Map<String, dynamic> json) {
+  return DbMetadataInfo(
+    tableName: json['tableName'] as String,
+    rowAccessor: (json['rowAccessor'] as Map<String, dynamic>)?.map(
+      (k, e) => MapEntry(k, e as String),
+    ),
+    primaryKeyField: json['primaryKeyField'] as String,
+    indexFields:
+        (json['indexFields'] as List)?.map((e) => e as String)?.toList(),
+    detailField: json['detailField'] == null
+        ? null
+        : DbDetailFieldInfo.fromJson(
+            json['detailField'] as Map<String, dynamic>),
+  );
+}
+
+Map<String, dynamic> _$DbMetadataInfoToJson(DbMetadataInfo instance) =>
+    <String, dynamic>{
+      'tableName': instance.tableName,
+      'rowAccessor': instance.rowAccessor,
+      'primaryKeyField': instance.primaryKeyField,
+      'indexFields': instance.indexFields?.map((e) => e)?.toList(),
+      'detailField': instance.detailField?.toJson(),
+    };
+
+DbDetailFieldInfo _$DbDetailFieldInfoFromJson(Map<String, dynamic> json) {
+  return DbDetailFieldInfo(
+    fieldName: json['fieldName'] as String,
+    className: json['className'] as String,
+    detailKeys: (json['detailKeys'] as List)?.map((e) => e as String)?.toList(),
+  );
+}
+
+Map<String, dynamic> _$DbDetailFieldInfoToJson(DbDetailFieldInfo instance) =>
+    <String, dynamic>{
+      'fieldName': instance.fieldName,
+      'className': instance.className,
+      'detailKeys': instance.detailKeys,
+    };

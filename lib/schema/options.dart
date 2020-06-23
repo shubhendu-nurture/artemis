@@ -1,3 +1,4 @@
+import 'package:artemis/generator/data/class_property.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:yaml/yaml.dart';
 
@@ -129,6 +130,12 @@ class SchemaMap {
   /// A [Glob] to find queries files.
   final String queriesGlob;
 
+  /// A metadata file this schema mapping to be used.
+  final String metadataFile;
+
+  /// A entity file containing the entity definition.
+  final String entityOutput;
+
   /// The resolve type field used on this schema.
   @JsonKey(defaultValue: '__typename')
   final String typeNameField;
@@ -150,6 +157,8 @@ class SchemaMap {
     this.output,
     this.schema,
     this.queriesGlob,
+    this.metadataFile,
+    this.entityOutput,
     this.typeNameField = '__typename',
     this.namingScheme = NamingScheme.pathedWithTypes,
   });
@@ -160,4 +169,64 @@ class SchemaMap {
 
   /// Convert this schema mapping instance to JSON.
   Map<String, dynamic> toJson() => _$SchemaMapToJson(this);
+}
+
+/// Metadata info detail for mapping response to db entities.
+@JsonSerializable(explicitToJson: true)
+class DbMetadataInfo {
+  /// Table name to use for the response object storage.
+  final String tableName;
+
+  /// Result object access property path for fetching rows of database.
+  final Map<String, String> rowAccessor;
+
+  /// Primary key field name for the table.
+  final String primaryKeyField;
+
+  /// Index field columns for the table.
+  final List<String> indexFields;
+
+  /// Info about the detail column for the table.
+  final DbDetailFieldInfo detailField;
+
+  /// All fields for this schema map
+  Map<String, String> allFields;
+
+  /// Instantiates a DbMetadataInfo.
+  DbMetadataInfo(
+      {this.tableName,
+      this.rowAccessor,
+      this.primaryKeyField,
+      this.indexFields,
+      this.detailField});
+
+  /// Build a metadata info from a JSON map.
+  factory DbMetadataInfo.fromJson(Map<String, dynamic> json) =>
+      _$DbMetadataInfoFromJson(json);
+
+  /// Convert this meta data instance to JSON.
+  Map<String, dynamic> toJson() => _$DbMetadataInfoToJson(this);
+}
+
+/// Db field info for table used for storage of response objects.
+@JsonSerializable(explicitToJson: true)
+class DbDetailFieldInfo {
+  /// Field name to be used in the generated entity object for detail object.
+  final String fieldName;
+
+  /// Class name to use for mapping detail column from table.
+  final String className;
+
+  /// The top level response fields to be moved to the detail column.
+  final List<String> detailKeys;
+
+  /// Instantiates a DbFieldInfo.
+  DbDetailFieldInfo({this.fieldName, this.className, this.detailKeys});
+
+  /// Build a db field info from a JSON map.
+  factory DbDetailFieldInfo.fromJson(Map<String, dynamic> json) =>
+      _$DbDetailFieldInfoFromJson(json);
+
+  /// Convert this db field info instance to JSON.
+  Map<String, dynamic> toJson() => _$DbDetailFieldInfoToJson(this);
 }

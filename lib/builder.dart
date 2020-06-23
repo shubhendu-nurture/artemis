@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:artemis/generator/data/data.dart';
+import 'package:artemis/generator/helpers.dart';
 import 'package:build/build.dart';
 import 'package:glob/glob.dart';
 import 'package:gql/ast.dart';
@@ -28,18 +30,20 @@ List<String> _builderOptionsToExpectedOutputs(BuilderOptions builderOptions) {
 
   if (schemaMaps.any((s) => s.output == null)) {
     throw Exception('''One or more SchemaMap configurations miss an output!
-Please check your build.yaml file.
-''');
+                       Please check your build.yaml file.''');
   }
 
   return schemaMaps
       .map((s) {
         final outputWithoutLib = s.output.replaceAll(RegExp(r'^lib/'), '');
-
-        return {
+        final outputs = [
           outputWithoutLib,
-          _addGraphQLExtensionToPathIfNeeded(outputWithoutLib),
-        }.toList();
+          _addGraphQLExtensionToPathIfNeeded(outputWithoutLib)
+        ];
+        if (null != s.entityOutput) {
+          outputs.add(s.entityOutput.replaceAll(RegExp(r'^lib/'), ''));
+        }
+        return outputs;
       })
       .expand((e) => e)
       .toList();
@@ -93,8 +97,8 @@ class GraphQLQueryBuilder implements Builder {
       // Loop through all files in glob
       if (schemaMap.queriesGlob == null) {
         throw Exception('''No queries were considered on this generation!
-Make sure that `queries_glob` your build.yaml file include GraphQL queries files.
-''');
+                          Make sure that `queries_glob` your build.yaml 
+                          file include GraphQL queries files.''');
       } else if (Glob(schemaMap.queriesGlob).matches(schemaMap.schema)) {
         throw QueryGlobsSchemaException();
       } else if (Glob(schemaMap.queriesGlob).matches(schemaMap.output)) {
@@ -125,11 +129,10 @@ Make sure that `queries_glob` your build.yaml file include GraphQL queries files
             )
             .first;
       } catch (e) {
-        throw Exception(
-            '''Schema `${schemaMap.schema}` was not found or doesn't have a proper format!
-Make sure the file exists and you've typed it correctly on build.yaml.
-${e}
-''');
+        throw Exception('''Schema `${schemaMap.schema}` was not found or 
+                          doesn't have a proper format! Make sure the file 
+                          exists and you've typed it correctly on build.yaml.
+                          ${e}''');
       }
 
       final libDefinition = generateLibrary(
@@ -153,6 +156,48 @@ ${e}
         await buildStep.writeAsString(
             forwarderOutputFileId, writeLibraryForwarder(libDefinition));
       }
+
+      // Check if metadata file is provided for generating DB objects
+      if (null != schemaMap.metadataFile && schemaMap.metadataFile.isNotEmpty) {
+        print('Generate db entities for config in ${schemaMap.metadataFile}');
+        final dbMetadataInfo = await _getDbMetadataInfo(
+            buildStep, schemaMap.metadataFile, libDefinition);
+        //generate db entity for this schema map
+        buffer.clear();
+        final entityOutputFileId = AssetId(
+          buildStep.inputId.package,
+          schemaMap.entityOutput,
+        );
+        writeEntityObjectToBuffer(
+          buffer,
+          buildStep.inputId.package,
+          schemaMap.output,
+          schemaMap.entityOutput,
+          dbMetadataInfo,
+        );
+        await buildStep.writeAsString(entityOutputFileId, buffer.toString());
+      }
+    }
+  }
+
+  Future<DbMetadataInfo> _getDbMetadataInfo(
+    BuildStep buildStep,
+    String metadataFile,
+    LibraryDefinition definition,
+  ) async {
+    final metadataAssetStream = buildStep.findAssets(Glob(metadataFile));
+    try {
+      final dbMetadataInfo = await metadataAssetStream.asyncMap(
+        (asset) async {
+          final jsonString = await buildStep.readAsString(asset);
+          return DbMetadataInfo.fromJson(
+              jsonDecode(jsonString) as Map<String, dynamic>);
+        },
+      ).first;
+      dbMetadataInfo.allFields = getFieldMappings(definition.queries);
+      return dbMetadataInfo;
+    } catch (e) {
+      throw Exception('''Could not parse metadata file $metadataFile ${e}''');
     }
   }
 }

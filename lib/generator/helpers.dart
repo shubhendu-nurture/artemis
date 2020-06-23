@@ -68,8 +68,6 @@ List<String> dartKeywords = const [
   'static',
 ];
 
-final String listPrefix = 'List<';
-
 Iterable<T> _removeDuplicatedBy<T, U>(
     Iterable<T> list, _IterableFunction<T, U> fn) {
   final values = <U, bool>{};
@@ -101,6 +99,7 @@ String normalizeName(String name) {
     return 'kw\$$name';
   }
 
+  final listPrefix = 'List<';
   if (name.startsWith(listPrefix)) {
     var prefixIndex = name.indexOf(listPrefix) + listPrefix.length;
     var prefix = name.substring(0, listPrefix.length);
@@ -163,4 +162,35 @@ bool hasValue(Object obj) {
     return obj != null && obj.isNotEmpty;
   }
   return obj != null && obj.toString().isNotEmpty;
+}
+
+/// a list of dart lang keywords
+List<String> sqliteTypes = const [
+  'int',
+  'double',
+  'String',
+  'bool',
+  'Uint8List'
+];
+
+/// Get field mappings used in the current schema map
+Map<String, String> getFieldMappings(Iterable<QueryDefinition> queries) {
+  final definitions =
+      queries.map((e) => e.classes.map((e) => e)).expand((e) => e).toList();
+
+  final fragments = definitions.whereType<FragmentClassDefinition>();
+  final classes = definitions.whereType<ClassDefinition>();
+  final allProperties = fragments
+      .map((e) => e.properties)
+      .expand((element) => element)
+      .toList()
+      .followedBy(classes.map((e) => e.properties).expand((element) => element))
+      .toList()
+      .fold<Map<String, String>>(<String, String>{}, (acc, element) {
+    final dataType = element.type.namePrintable;
+    acc[element.name.name] =
+        sqliteTypes.contains(dataType) ? dataType : 'String';
+    return acc;
+  });
+  return allProperties;
 }

@@ -1,7 +1,9 @@
 import 'package:artemis/generator/data/data.dart';
+import 'package:artemis/schema/options.dart';
 import 'package:code_builder/code_builder.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:gql_code_gen/gql_code_gen.dart' as dart;
+import 'package:recase/recase.dart';
 
 import '../generator/helpers.dart';
 
@@ -134,7 +136,7 @@ Spec classDefinitionToSpec(
     'RescheduleBooking\$MutationType\$UpdateService\$Bookings',
     'CancelBooking\$MutationType\$UpdateBooking\$Bookings',
   ];
-  final List<Method> customOverrides = [];
+  final customOverrides = <Method>[];
   if (_responseTypes.contains(definition.name.namePrintable)) {
     classExtension = refer('QueryResponse');
 
@@ -300,7 +302,7 @@ Spec fragmentClassDefinitionToSpec(FragmentClassDefinition definition) {
 
 /// Generates a [Spec] of a detail model class.
 Spec generateModelDetailClassSpec() {
-  final List<Field> detailFieldDefinitions = [];
+  final detailFieldDefinitions = <Field>[];
   detailFieldDefinitions.add(Field((f) => f
     ..type = refer('int')
     ..name = 'actorCounterId'));
@@ -311,8 +313,7 @@ Spec generateModelDetailClassSpec() {
     ..type = refer('int')
     ..name = 'farmCropId'));
   detailFieldDefinitions.add(Field((f) => f
-    ..type = refer(
-        'List<FetchBookings\$QueryType\$GetBookingsByActor\$Bookings\$Services>')
+    ..type = refer('List<BookingModelMixin\$Services>')
     ..name = 'services'));
   return Class(
     (b) => b
@@ -517,7 +518,6 @@ Spec generateLibrarySpec(LibraryDefinition definition) {
       .expand((e) => e)
       .fold<Map<String, Definition>>(<String, Definition>{}, (acc, element) {
     acc[element.name.name] = element;
-
     return acc;
   }).values;
 
@@ -547,6 +547,138 @@ Spec generateLibrarySpec(LibraryDefinition definition) {
   );
 }
 
+/// Generate dao spec from given metadata file
+Spec generateEntitySpec(
+  String packageName,
+  String schemaOutputFile,
+  String entityOutputFile,
+  DbMetadataInfo dbMetadataInfo,
+) {
+  final outputFile = schemaOutputFile.replaceAll(RegExp(r'^lib/'), '');
+  final importDirectives = [
+    Directive.import('dart:convert'),
+    Directive.import('package:floor/floor.dart'),
+    Directive.import('package:$packageName/$outputFile'),
+  ];
+  final enityClassName = ReCase(
+    entityOutputFile.substring(
+      entityOutputFile.lastIndexOf('/') + 1,
+      entityOutputFile.indexOf('.dart'),
+    ),
+  ).pascalCase;
+
+  final bodyCode = StringBuffer();
+
+  final entityFields = <Field>[];
+  final parameterFields = <Parameter>[];
+  //add primary key field if present
+  if (null != dbMetadataInfo.primaryKeyField) {
+    entityFields.add(
+      Field(
+        (f) => f
+          ..name = dbMetadataInfo.primaryKeyField
+          ..type =
+              refer(dbMetadataInfo.allFields[dbMetadataInfo.primaryKeyField])
+          ..annotations.add(CodeExpression(Code('primaryKey')))
+          ..annotations.add(CodeExpression(Code(
+              'ColumnInfo(name: \'${ReCase(dbMetadataInfo.primaryKeyField).snakeCase}\')'))),
+      ),
+    );
+    parameterFields.add(
+      Parameter((p) => p
+        ..name = dbMetadataInfo.primaryKeyField
+        ..toThis = true
+        ..named = true),
+    );
+  }
+
+  //add other index fields
+  for (final indexFieldName in dbMetadataInfo.indexFields) {
+    entityFields.add(
+      Field(
+        (f) => f
+          ..name = indexFieldName
+          ..type = refer(dbMetadataInfo.allFields[indexFieldName])
+          ..annotations.add(CodeExpression(Code(
+              'ColumnInfo(name: \'${ReCase(indexFieldName).snakeCase}\')'))),
+      ),
+    );
+    parameterFields.add(
+      Parameter((p) => p
+        ..name = indexFieldName
+        ..toThis = true
+        ..named = true),
+    );
+  }
+
+  var enityMethods = <Method>[];
+  final detailField = dbMetadataInfo.detailField;
+  if (null != detailField) {
+    //add detail field String column which will contain the json string
+    entityFields.add(
+      Field((f) => f
+        ..name = detailField.fieldName
+        ..type = refer('String')
+        ..annotations.add(CodeExpression(Code(
+            'ColumnInfo(name: \'${ReCase(detailField.fieldName).snakeCase}\')')))),
+    );
+    parameterFields.add(
+      Parameter((p) => p
+        ..name = detailField.fieldName
+        ..toThis = true
+        ..named = true),
+    );
+
+    final ignoreFieldName = '_${detailField.fieldName}Model';
+    //add ignore field
+    entityFields.add(
+      Field((f) => f
+        ..name = ignoreFieldName
+        ..type = refer(detailField.className)
+        ..annotations.add(CodeExpression(Code('ignore')))),
+    );
+
+    //add detail model parsing logic
+    bodyCode.clear();
+    bodyCode.writeln(
+        'if (null != $ignoreFieldName || null == ${detailField.fieldName}) {');
+    bodyCode.writeln('  return $ignoreFieldName;');
+    bodyCode.writeln('}');
+    bodyCode.writeln(
+        '$ignoreFieldName = ${detailField.className}.fromJson(jsonDecode(${detailField.fieldName}));');
+    bodyCode.writeln('return $ignoreFieldName;');
+
+    enityMethods.add(
+      Method((m) => m
+        ..type = MethodType.getter
+        ..returns = refer(detailField.className)
+        ..name = '${detailField.fieldName}Model'
+        ..lambda = false
+        ..body = Code(bodyCode.toString())),
+    );
+  }
+
+  final bodyDirective = Class(
+    (b) => b
+      ..annotations.add(CodeExpression(
+          Code('Entity(tableName: \'${dbMetadataInfo.tableName}\')')))
+      ..name = enityClassName
+      ..fields.addAll(entityFields)
+      ..constructors.add(
+        Constructor(
+          (b) => b..requiredParameters.addAll(parameterFields),
+        ),
+      )
+      ..methods.addAll(enityMethods),
+  );
+
+  return Library(
+    (b) => b
+      ..directives.addAll(importDirectives)
+      ..body.add(bodyDirective),
+  );
+}
+
 /// Emit a [Spec] into a String, considering Dart formatting.
 String specToString(Spec spec) {
   final emitter = DartEmitter();
@@ -567,3 +699,24 @@ String writeLibraryForwarder(LibraryDefinition definition) =>
     '''// GENERATED CODE - DO NOT MODIFY BY HAND
 export '${definition.basename}.dart';
 ''';
+
+/// Generate dart code for entity objects into a buffer.
+void writeEntityObjectToBuffer(
+  StringBuffer buffer,
+  String packageName,
+  String schemaOutputFile,
+  String entityOutputFile,
+  DbMetadataInfo dbMetadataInfo,
+) {
+  buffer.writeln('// GENERATED CODE - DO NOT MODIFY BY HAND\n');
+  buffer.write(
+    specToString(
+      generateEntitySpec(
+        packageName,
+        schemaOutputFile,
+        entityOutputFile,
+        dbMetadataInfo,
+      ),
+    ),
+  );
+}
