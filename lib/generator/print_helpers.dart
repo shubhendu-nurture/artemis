@@ -133,8 +133,8 @@ Spec classDefinitionToSpec(
     'FetchBookingById\$QueryType\$GetBookingsByID\$Bookings',
     'FetchBookings\$QueryType\$GetBookingsByActor\$Bookings',
     'CreateBooking\$MutationType\$CreateBooking\$Bookings',
-    'RescheduleBooking\$MutationType\$UpdateService\$Bookings',
-    'CancelBooking\$MutationType\$UpdateBooking\$Bookings',
+    'RescheduleBooking\$MutationType\$ServiceRequestAreaAndTimeUpdate\$Bookings',
+    'CancelBooking\$MutationType\$ServiceCancel\$Bookings',
   ];
   final customOverrides = <Method>[];
   if (_responseTypes.contains(definition.name.namePrintable)) {
